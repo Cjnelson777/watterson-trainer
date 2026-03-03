@@ -38,15 +38,6 @@
         let history = [];
 
         // Global functions
-        function addMessage(sender, text) {
-            const div = document.createElement('div');
-            div.className = `message ${sender}`;
-            div.textContent = text;
-            document.getElementById('history').appendChild(div);
-            div.scrollIntoView({ behavior: "smooth" });
-            history.push({ role: sender === 'user' ? 'user' : 'assistant', content: text });
-        }
-
         function startRolePlay(type) {
             scenario = type;
             document.getElementById('history').innerHTML = '';
@@ -60,6 +51,15 @@
             document.getElementById('status').textContent = 'Scenario started: ' + type;
         }
 
+        function addMessage(sender, text) {
+            const div = document.createElement('div');
+            div.className = `message ${sender}`;
+            div.textContent = text;
+            document.getElementById('history').appendChild(div);
+            div.scrollIntoView({ behavior: "smooth" });
+            history.push({ role: sender === 'user' ? 'user' : 'assistant', content: text });
+        }
+
         async function sendMessage() {
             const input = document.getElementById('input');
             const msg = input.value.trim();
@@ -67,6 +67,14 @@
 
             addMessage('user', msg);
             input.value = '';
+
+            // Check for API_KEY from Render env var
+            const API_KEY = process.env.API_KEY;
+
+            if (!API_KEY) {
+                addMessage('prospect', '(Error: API_KEY is not set in Render Environment variables. Check dashboard.)');
+                return;
+            }
 
             try {
                 const res = await fetch('https://api.x.ai/v1/chat/completions', {
@@ -78,7 +86,7 @@
                     body: JSON.stringify({
                         model: 'grok-beta',
                         messages: [
-                            { role: 'system', content: `You are Sarah, a facilities manager at a multi-site ${scenario === 'cold-call' ? 'retail chain' : scenario === 'tradeshow' ? 'QSR brand at a tradeshow' : 'hotel group'}. Be realistic, skeptical but fair, use industry terms (downtime, KPIs, CMMS, vendors), push back naturally, cycle subtle personality variations. Conversation so far:\n${history.map(h => `${h.role}: ${h.content}`).join('\n')}` },
+                            { role: 'system', content: `You are Sarah, a facilities manager at a multi-site ${scenario === 'cold-call' ? 'retail chain' : scenario === 'tradeshow' ? 'QSR brand at a tradeshow' : 'hotel group'}. Be realistic, skeptical but fair, use industry terms, push back naturally. Conversation so far:\n${history.map(h => `${h.role}: ${h.content}`).join('\n')}` },
                             { role: 'user', content: msg }
                         ],
                         max_tokens: 250,
