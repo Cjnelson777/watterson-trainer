@@ -14,11 +14,13 @@
         .user { background: #4d6995; color: white; text-align: right; margin-left: auto; }
         #input { width: 100%; padding: 12px; font-size: 1em; border: 1px solid #ccc; border-radius: 8px; margin-bottom: 10px; box-sizing: border-box; }
         #sendBtn { padding: 12px 24px; background: #4d6995; color: white; border: none; border-radius: 8px; cursor: pointer; }
-        #feedback { margin-top: 20px; padding: 15px; background: #fff; border-radius: 12px; border: 1px solid #ccc; display: none; }
+        #feedback { margin-top: 20px; padding: 15px; background: #fff; border-radius: 12px; display: none; }
+        #jsStatus { margin: 20px; color: #666; font-weight: bold; }
     </style>
 </head>
 <body>
 
+    <div id="jsStatus">JS Loaded — buttons should work now</div>
     <h1>Watterson Role-Play Trainer</h1>
     <p>Choose starting scenario:</p>
     <button id="coldCallBtn">Cold Call</button>
@@ -32,31 +34,30 @@
     <div id="feedback"></div>
 
     <script>
-        let scenario = '';
-        let history = [];
-
-        function addMessage(sender, text) {
-            const div = document.createElement('div');
-            div.className = `message ${sender}`;
-            div.textContent = text;
-            document.getElementById('history').appendChild(div);
-            div.scrollIntoView();
-            history.push({ role: sender === 'user' ? 'user' : 'assistant', content: text });
-        }
-
-        function startRolePlay(type) {
-            scenario = type;
+        // Make functions global
+        window.startRolePlay = function(type) {
+            window.scenario = type;
             document.getElementById('history').innerHTML = '';
-            history = [];
+            window.history = [];
             let opener = '';
             if (type === 'cold-call') opener = "Hi, this is Sarah from facilities at [Retail Chain]. How can I help?";
             if (type === 'tradeshow') opener = "Hey, saw you at the booth — what does Watterson do exactly?";
             if (type === 'virtual') opener = "Hi Chris, thanks for the call. What's on your mind today?";
             if (type === 'follow-up') opener = "Hi Chris, got your email. Tell me more about how you can help.";
             addMessage('prospect', opener);
-        }
+            document.getElementById('jsStatus').textContent = 'Scenario started: ' + type;
+        };
 
-        async function sendMessage() {
+        window.addMessage = function(sender, text) {
+            const div = document.createElement('div');
+            div.className = `message ${sender}`;
+            div.textContent = text;
+            document.getElementById('history').appendChild(div);
+            div.scrollIntoView();
+            window.history.push({ role: sender === 'user' ? 'user' : 'assistant', content: text });
+        };
+
+        window.sendMessage = async function() {
             const input = document.getElementById('input');
             const msg = input.value.trim();
             if (!msg) return;
@@ -74,7 +75,7 @@
                     body: JSON.stringify({
                         model: 'grok-beta',
                         messages: [
-                            { role: 'system', content: `You are Sarah, a facilities manager at a multi-site ${scenario === 'cold-call' ? 'retail chain' : scenario === 'tradeshow' ? 'QSR brand at a tradeshow' : 'hotel group'}. Be realistic, skeptical but fair, use industry terms, push back naturally. Conversation so far:\n${history.map(h => `${h.role}: ${h.content}`).join('\n')}` },
+                            { role: 'system', content: `You are Sarah, a facilities manager at a multi-site ${window.scenario === 'cold-call' ? 'retail chain' : window.scenario === 'tradeshow' ? 'QSR brand at a tradeshow' : 'hotel group'}. Be realistic, skeptical but fair, use industry terms, push back naturally. Conversation so far:\n${window.history.map(h => `${h.role}: ${h.content}`).join('\n')}` },
                             { role: 'user', content: msg }
                         ],
                         max_tokens: 250,
@@ -90,15 +91,15 @@
             } catch (err) {
                 addMessage('prospect', `(Error: ${err.message}. Check key/internet.)`);
             }
-        }
+        };
 
-        // Safe event listeners
+        // Attach listeners safely
         window.addEventListener('load', () => {
-            document.getElementById('coldCallBtn')?.addEventListener('click', () => startRolePlay('cold-call'));
-            document.getElementById('tradeshowBtn')?.addEventListener('click', () => startRolePlay('tradeshow'));
-            document.getElementById('virtualBtn')?.addEventListener('click', () => startRolePlay('virtual'));
-            document.getElementById('followupBtn')?.addEventListener('click', () => startRolePlay('follow-up'));
-            document.getElementById('sendBtn')?.addEventListener('click', sendMessage);
+            document.getElementById('coldCallBtn').addEventListener('click', () => window.startRolePlay('cold-call'));
+            document.getElementById('tradeshowBtn').addEventListener('click', () => window.startRolePlay('tradeshow'));
+            document.getElementById('virtualBtn').addEventListener('click', () => window.startRolePlay('virtual'));
+            document.getElementById('followupBtn').addEventListener('click', () => window.startRolePlay('follow-up'));
+            document.getElementById('sendBtn').addEventListener('click', window.sendMessage);
 
             const input = document.getElementById('input');
             if (input) input.addEventListener('keypress', e => {
@@ -107,6 +108,8 @@
                     document.getElementById('sendBtn').click();
                 }
             });
+
+            document.getElementById('jsStatus').textContent = 'JS Loaded Successfully — click a scenario button';
         });
     </script>
 </body>
