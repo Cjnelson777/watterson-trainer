@@ -15,102 +15,59 @@
         #input { width: 100%; padding: 12px; font-size: 1em; border: 1px solid #ccc; border-radius: 8px; margin-bottom: 10px; box-sizing: border-box; }
         #sendBtn { padding: 12px 24px; background: #4d6995; color: white; border: none; border-radius: 8px; cursor: pointer; }
         #feedback { margin-top: 20px; padding: 15px; background: #fff; border-radius: 12px; display: none; }
-        #jsStatus { margin: 20px; color: #666; font-weight: bold; }
+        #status { margin: 20px; color: #666; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div id="jsStatus">JS Loaded — buttons should work now</div>
+    <div id="status">JS Loaded — click a scenario button</div>
     <h1>Watterson Role-Play Trainer</h1>
     <p>Choose starting scenario:</p>
-    <button id="coldCallBtn">Cold Call</button>
-    <button id="tradeshowBtn">Tradeshow Booth Chat</button>
-    <button id="virtualBtn">Virtual Discovery Meeting</button>
-    <button id="followupBtn">Follow-up Email Reply</button>
+    <button onclick="startRolePlay('cold-call')">Cold Call</button>
+    <button onclick="startRolePlay('tradeshow')">Tradeshow Booth Chat</button>
+    <button onclick="startRolePlay('virtual')">Virtual Discovery Meeting</button>
+    <button onclick="startRolePlay('follow-up')">Follow-up Email Reply</button>
 
     <div id="history"></div>
     <textarea id="input" placeholder="Type your response..."></textarea>
-    <button id="sendBtn">Send</button>
+    <button onclick="sendMessage()">Send</button>
     <div id="feedback"></div>
 
     <script>
-        // Make functions global
-        window.startRolePlay = function(type) {
-            window.scenario = type;
+        function startRolePlay(type) {
             document.getElementById('history').innerHTML = '';
-            window.history = [];
             let opener = '';
             if (type === 'cold-call') opener = "Hi, this is Sarah from facilities at [Retail Chain]. How can I help?";
             if (type === 'tradeshow') opener = "Hey, saw you at the booth — what does Watterson do exactly?";
             if (type === 'virtual') opener = "Hi Chris, thanks for the call. What's on your mind today?";
             if (type === 'follow-up') opener = "Hi Chris, got your email. Tell me more about how you can help.";
-            addMessage('prospect', opener);
-            document.getElementById('jsStatus').textContent = 'Scenario started: ' + type;
-        };
+            document.getElementById('history').innerHTML = '<div class="message prospect">' + opener + '</div>';
+            document.getElementById('status').textContent = 'Scenario started: ' + type;
+        }
 
-        window.addMessage = function(sender, text) {
-            const div = document.createElement('div');
-            div.className = `message ${sender}`;
-            div.textContent = text;
-            document.getElementById('history').appendChild(div);
-            div.scrollIntoView();
-            window.history.push({ role: sender === 'user' ? 'user' : 'assistant', content: text });
-        };
-
-        window.sendMessage = async function() {
+        function sendMessage() {
             const input = document.getElementById('input');
             const msg = input.value.trim();
             if (!msg) return;
 
-            addMessage('user', msg);
+            const div = document.createElement('div');
+            div.className = 'message user';
+            div.textContent = msg;
+            document.getElementById('history').appendChild(div);
+            div.scrollIntoView();
+
+            setTimeout(() => {
+                const replyDiv = document.createElement('div');
+                replyDiv.className = 'message prospect';
+                replyDiv.textContent = "Interesting... tell me more about your current setup.";
+                document.getElementById('history').appendChild(replyDiv);
+                replyDiv.scrollIntoView();
+            }, 1000);
+
             input.value = '';
+        }
 
-            try {
-                const res = await fetch('https://api.x.ai/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${API_KEY}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        model: 'grok-beta',
-                        messages: [
-                            { role: 'system', content: `You are Sarah, a facilities manager at a multi-site ${window.scenario === 'cold-call' ? 'retail chain' : window.scenario === 'tradeshow' ? 'QSR brand at a tradeshow' : 'hotel group'}. Be realistic, skeptical but fair, use industry terms, push back naturally. Conversation so far:\n${window.history.map(h => `${h.role}: ${h.content}`).join('\n')}` },
-                            { role: 'user', content: msg }
-                        ],
-                        max_tokens: 250,
-                        temperature: 0.85
-                    })
-                });
-
-                if (!res.ok) throw new Error(await res.text());
-
-                const data = await res.json();
-                const reply = data.choices[0].message.content;
-                addMessage('prospect', reply);
-            } catch (err) {
-                addMessage('prospect', `(Error: ${err.message}. Check key/internet.)`);
-            }
-        };
-
-        // Attach listeners safely
-        window.addEventListener('load', () => {
-            document.getElementById('coldCallBtn').addEventListener('click', () => window.startRolePlay('cold-call'));
-            document.getElementById('tradeshowBtn').addEventListener('click', () => window.startRolePlay('tradeshow'));
-            document.getElementById('virtualBtn').addEventListener('click', () => window.startRolePlay('virtual'));
-            document.getElementById('followupBtn').addEventListener('click', () => window.startRolePlay('follow-up'));
-            document.getElementById('sendBtn').addEventListener('click', window.sendMessage);
-
-            const input = document.getElementById('input');
-            if (input) input.addEventListener('keypress', e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    document.getElementById('sendBtn').click();
-                }
-            });
-
-            document.getElementById('jsStatus').textContent = 'JS Loaded Successfully — click a scenario button';
-        });
+        document.getElementById('status').textContent = 'JS Loaded Successfully — click a scenario button';
     </script>
 </body>
 </html>
